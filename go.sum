@@ -1105,10 +1105,6 @@ github.com/volcengine/volc-sdk-golang v1.0.216 h1:+wAq8RvxpGECveRJaAXZFpzrZoQ33W
 github.com/volcengine/volc-sdk-golang v1.0.216/go.mod h1:zHJlaqiMbIB+0mcrsZPTwOb3FB7S/0MCfqlnO8R7hlM=
 github.com/vultr/govultr/v3 v3.21.1 h1:0cnA8fXiqayPGbAlNHaW+5oCQjpDNkkAm3Nt3LOHplM=
 github.com/vultr/govultr/v3 v3.21.1/go.mod h1:9WwnWGCKnwDlNjHjtt+j+nP+0QWq6hQXzaHgddqrLWY=
-github.com/wyx2685/sing-box_mod v1.13.0-alpha.5.0.20251202212447-8d054dcd8bfe h1:q+4N8P/fC4m4skraTRKP4Tlx98+Q5YhyoNjPdozDw2k=
-github.com/wyx2685/sing-box_mod v1.13.0-alpha.5.0.20251202212447-8d054dcd8bfe/go.mod h1:1VDZd5lZAsxv7d1OdVyyKyv/qZ/zkxID6PAjYGVR6Ok=
-github.com/wyx2685/sing-vmess v0.0.0-20250723121437-95d5ab59ff92 h1:A5/G1mY1M3h+j6D3BgfRlngbsfTUGwE8S3UuyR9VfbU=
-github.com/wyx2685/sing-vmess v0.0.0-20250723121437-95d5ab59ff92/go.mod h1:ZvICtYzgNgbRy2fgKTVmG4o+6pP92dzY5GhwSlfya8Q=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
 github.com/xdg-go/pbkdf2 v1.0.0/go.mod h1:jrpuAogTd400dnrH08LKmI/xc1MbPOebTwRqcT5RDeI=
@@ -1140,6 +1136,10 @@ github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
+github.com/yuwan027/sing-box_mod v1.13.0-alpha.5.0.20251202212447-8d054dcd8bfe h1:/iBsiFv5zx7I4p2CfUAH5ZfO8EH/JBxFPk+n9TnQA5s=
+github.com/yuwan027/sing-box_mod v1.13.0-alpha.5.0.20251202212447-8d054dcd8bfe/go.mod h1:1VDZd5lZAsxv7d1OdVyyKyv/qZ/zkxID6PAjYGVR6Ok=
+github.com/yuwan027/sing-vmess v0.0.0-20250723121437-95d5ab59ff92 h1:M2YWJOGExHLqwL9G8YyPOxeN8mzoe9CUVB5+kldqRhk=
+github.com/yuwan027/sing-vmess v0.0.0-20250723121437-95d5ab59ff92/go.mod h1:ZvICtYzgNgbRy2fgKTVmG4o+6pP92dzY5GhwSlfya8Q=
 github.com/zeebo/assert v1.1.0 h1:hU1L1vLTHsnO8x8c9KAR5GmM5QscxHg5RNU5z5qbUWY=
 github.com/zeebo/assert v1.1.0/go.mod h1:Pq9JiuJQpG8JLJdtkwrJESF0Foym2/D9XMU5ciN/wJ0=
 github.com/zeebo/blake3 v0.2.4 h1:KYQPkhpRtcqh0ssGYcKLG1JYvddkEA8QwCM/yBqhaZI=

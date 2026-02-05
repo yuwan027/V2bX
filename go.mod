@@ -316,6 +316,7 @@ require (
 
 replace (
 	github.com/libdns/alidns => github.com/libdns/alidns v1.0.5-libdns.v1.beta1
-	github.com/sagernet/sing-box => github.com/wyx2685/sing-box_mod v1.13.0-alpha.5.0.20251202212447-8d054dcd8bfe
+	github.com/sagernet/sing-box => github.com/yuwan027/sing-box_mod v1.13.0-alpha.5.0.20251202212447-8d054dcd8bfe
 	github.com/sagernet/sing-tun => github.com/sagernet/sing-tun v0.8.0-beta.11
+	github.com/wyx2685/sing-vmess => github.com/yuwan027/sing-vmess v0.0.0-20250723121437-95d5ab59ff92
 )
