@@ -3,14 +3,17 @@ package node
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
 	"os"
 	"time"
 
+	"github.com/InazumaV/V2bX/api/panel"
 	"github.com/InazumaV/V2bX/common/file"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,6 +29,76 @@ func (c *Controller) renewCertTask() error {
 		log.WithField("tag", c.tag).Info("renew cert error: ", err)
 		return nil
 	}
+	// Report renewed cert SHA256 to panel
+	if err = c.reportCertSHA256(); err != nil {
+		log.WithField("tag", c.tag).Warnf("report renewed cert sha256 error: %s", err)
+	}
+	return nil
+}
+
+// CalculateCertSHA256 reads cert PEM file and returns base64-encoded SHA256 hash of the full certificate
+func CalculateCertSHA256(certPath string) (string, error) {
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return "", fmt.Errorf("read cert file error: %w", err)
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return "", fmt.Errorf("failed to decode PEM block")
+	}
+	hash := sha256.Sum256(block.Bytes)
+	return base64.StdEncoding.EncodeToString(hash[:]), nil
+}
+
+// CalculatePubkeySHA256 reads cert PEM file and returns base64-encoded SHA256 hash of the public key (SPKI)
+func CalculatePubkeySHA256(certPath string) (string, error) {
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return "", fmt.Errorf("read cert file error: %w", err)
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return "", fmt.Errorf("failed to decode PEM block")
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("parse certificate error: %w", err)
+	}
+	// Marshal the public key to PKIX/SPKI format
+	pubkeyBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("marshal public key error: %w", err)
+	}
+	hash := sha256.Sum256(pubkeyBytes)
+	return base64.StdEncoding.EncodeToString(hash[:]), nil
+}
+
+func (c *Controller) reportCertSHA256() error {
+	if c.CertConfig.CertMode == "none" || c.CertConfig.CertMode == "" {
+		return nil // No cert to report
+	}
+	if c.CertConfig.CertFile == "" {
+		return nil
+	}
+	certHash, err := CalculateCertSHA256(c.CertConfig.CertFile)
+	if err != nil {
+		return fmt.Errorf("calculate cert sha256 error: %w", err)
+	}
+	pubkeyHash, err := CalculatePubkeySHA256(c.CertConfig.CertFile)
+	if err != nil {
+		return fmt.Errorf("calculate pubkey sha256 error: %w", err)
+	}
+	report := &panel.CertReport{
+		NodeType:     c.apiClient.NodeType,
+		NodeID:       c.apiClient.NodeId,
+		CertSHA256:   certHash,
+		PubkeySHA256: pubkeyHash,
+	}
+	err = c.apiClient.ReportCertificate(report)
+	if err != nil {
+		return fmt.Errorf("report cert error: %w", err)
+	}
+	log.WithField("tag", c.tag).Info("Certificate SHA256 reported to panel")
 	return nil
 }
 
