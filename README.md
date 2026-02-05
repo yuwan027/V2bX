@@ -1,12 +1,11 @@
 # V2bX
 
-[![](https://img.shields.io/badge/TgChat-UnOfficialV2Board%E4%BA%A4%E6%B5%81%E7%BE%A4-green)](https://t.me/unofficialV2board)
-[![](https://img.shields.io/badge/TgChat-YuzukiProjects%E4%BA%A4%E6%B5%81%E7%BE%A4-blue)](https://t.me/YuzukiProjects)
+> **This is an actively maintained personal fork after [wyx2685/V2bX](https://github.com/wyx2685/V2bX) stopped updates.**
+>
+> **这是 wyx2685/V2bX 停止更新后的个人维护活跃版本。**
 
-A V2board node server based on multi core, modified from XrayR.  
+A V2board node server based on multi core, modified from XrayR.
 一个基于多种内核的V2board节点服务端，修改自XrayR，支持V2ay,Trojan,Shadowsocks协议。
-
-**注意： 本项目需要搭配[修改版V2board](https://github.com/wyx2685/v2board)**
 
 ## 特点
 
@@ -20,7 +19,6 @@ A V2board node server based on multi core, modified from XrayR.
 * 配置简单明了。
 * 修改配置自动重启实例。
 * 支持多种内核，易扩展。
-* 支持条件编译，可仅编译需要的内核。
 
 ## 功能介绍
 
@@ -37,53 +35,46 @@ A V2board node server based on multi core, modified from XrayR.
 | 按照用户限速    | √     | √      | √           | √         |
 | 动态限速(未测试) | √     | √      | √           | √         |
 
-## TODO
-
-- [ ] 重新实现动态限速
-- [ ] 完善使用文档
-
 ## 软件安装
 
 ### 一键安装
 
-```
-wget -N https://raw.githubusercontent.com/wyx2685/V2bX-script/master/install.sh && bash install.sh
+```bash
+bash <(curl -Ls https://raw.githubusercontent.com/yuwan027/V2bX/dev_new/install.sh)
 ```
 
 ### 手动安装
 
-[手动安装教程](https://v2bx.v-50.me/v2bx/v2bx-xia-zai-he-an-zhuang/install/manual)
+下载对应架构的二进制文件：
+- [V2bX-linux-amd64](https://github.com/yuwan027/V2bX/releases/latest/download/V2bX-linux-amd64)
+- [V2bX-linux-arm64](https://github.com/yuwan027/V2bX/releases/latest/download/V2bX-linux-arm64)
 
 ## 构建
-``` bash
-# 通过-tags选项指定要编译的内核， 可选 xray， sing, hysteria2
-GOEXPERIMENT=jsonv2 go build -v -o build_assets/V2bX -tags "sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" -trimpath -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=$version' -s -w -buildid="
+
+```bash
+# 编译 (需要 Go 1.25+)
+./build.sh
+
+# 或手动编译
+GOEXPERIMENT=jsonv2 CGO_ENABLED=0 go build -v -trimpath \
+  -tags "sing xray with_quic with_grpc with_utls with_wireguard with_acme with_gvisor" \
+  -ldflags "-s -w -buildid=" \
+  -o V2bX .
 ```
 
-## 配置文件及详细使用教程
+## 配置文件
 
-[详细使用教程](https://v2bx.v-50.me/)
+参考 [V2bX 文档](https://v2bx.v-50.me/)
 
 ## 免责声明
 
-* 此项目用于本人自用，因此本人不能保证向后兼容性。
-* 由于本人能力有限，不能保证所有功能的可用性，如果出现问题请在Issues反馈。
+* 此项目用于个人使用，不保证向后兼容性。
 * 本人不对任何人使用本项目造成的任何后果承担责任。
-* 本人比较多变，因此本项目可能会随想法或思路的变动随性更改项目结构或大规模重构代码，若不能接受请勿使用。
-
-## 赞助
-
-[赞助链接](https://v-50.me/)
 
 ## Thanks
 
+* [wyx2685/V2bX](https://github.com/wyx2685/V2bX) - 原项目
 * [Project X](https://github.com/XTLS/)
 * [V2Fly](https://github.com/v2fly)
-* [VNet-V2ray](https://github.com/ProxyPanel/VNet-V2ray)
-* [Air-Universe](https://github.com/crossfw/Air-Universe)
 * [XrayR](https://github.com/XrayR/XrayR)
 * [sing-box](https://github.com/SagerNet/sing-box)
-
-## Stars 增长记录
-
-[![Stargazers over time](https://starchart.cc/wyx2685/V2bX.svg)](https://starchart.cc/wyx2685/V2bX)

@@ -3,8 +3,10 @@ package node
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -26,6 +28,43 @@ func (c *Controller) renewCertTask() error {
 		log.WithField("tag", c.tag).Info("renew cert error: ", err)
 		return nil
 	}
+	// Report renewed cert SHA256 to panel
+	if err = c.reportCertSHA256(); err != nil {
+		log.WithField("tag", c.tag).Warnf("report renewed cert sha256 error: %s", err)
+	}
+	return nil
+}
+
+// CalculateCertSHA256 reads cert PEM file and returns base64-encoded SHA256 hash
+func CalculateCertSHA256(certPath string) (string, error) {
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return "", fmt.Errorf("read cert file error: %w", err)
+	}
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return "", fmt.Errorf("failed to decode PEM block")
+	}
+	hash := sha256.Sum256(block.Bytes)
+	return base64.StdEncoding.EncodeToString(hash[:]), nil
+}
+
+func (c *Controller) reportCertSHA256() error {
+	if c.CertConfig.CertMode == "none" || c.CertConfig.CertMode == "" {
+		return nil // No cert to report
+	}
+	if c.CertConfig.CertFile == "" {
+		return nil
+	}
+	sha256Hash, err := CalculateCertSHA256(c.CertConfig.CertFile)
+	if err != nil {
+		return fmt.Errorf("calculate cert sha256 error: %w", err)
+	}
+	err = c.apiClient.ReportCertificate(sha256Hash)
+	if err != nil {
+		return fmt.Errorf("report cert error: %w", err)
+	}
+	log.WithField("tag", c.tag).Info("Certificate SHA256 reported to panel")
 	return nil
 }
 

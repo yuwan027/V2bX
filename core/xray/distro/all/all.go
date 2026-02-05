@@ -64,9 +64,10 @@ import (
 	// Transport headers
 	_ "github.com/xtls/xray-core/transport/internet/headers/http"
 	_ "github.com/xtls/xray-core/transport/internet/headers/noop"
-	_ "github.com/xtls/xray-core/transport/internet/headers/srtp"
-	_ "github.com/xtls/xray-core/transport/internet/headers/tls"
-	_ "github.com/xtls/xray-core/transport/internet/headers/utp"
-	_ "github.com/xtls/xray-core/transport/internet/headers/wechat"
-	_ "github.com/xtls/xray-core/transport/internet/headers/wireguard"
+	// 以下 headers 在 xray-core v1.260204.0 中被移除
+	// _ "github.com/xtls/xray-core/transport/internet/headers/srtp"
+	// _ "github.com/xtls/xray-core/transport/internet/headers/tls"
+	// _ "github.com/xtls/xray-core/transport/internet/headers/utp"
+	// _ "github.com/xtls/xray-core/transport/internet/headers/wechat"
+	// _ "github.com/xtls/xray-core/transport/internet/headers/wireguard"
 )

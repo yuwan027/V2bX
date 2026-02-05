@@ -77,6 +77,10 @@ func (c *Controller) Start() error {
 		if err != nil {
 			return fmt.Errorf("request cert error: %s", err)
 		}
+		// Report cert SHA256 to panel
+		if err = c.reportCertSHA256(); err != nil {
+			log.WithField("tag", c.tag).Warnf("report cert sha256 error: %s", err)
+		}
 	}
 	// Add new tag
 	err = c.server.AddNode(c.tag, node, c.Options)
