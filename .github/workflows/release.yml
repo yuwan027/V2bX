@@ -115,11 +115,11 @@ jobs:
         run: |
           go mod download
       - name: Get release version
-        if: ${{ github.event_name == 'release' }}
+        if: ${{ github.event_name == 'release' || github.event_name == 'workflow_dispatch' }}
         run: |
           echo "version=$(echo $GITHUB_REF | cut -d / -f 3)" >> $GITHUB_ENV
       - name: Get other version
-        if: ${{ github.event_name != 'release' }}
+        if: ${{ github.event_name != 'release' && github.event_name != 'workflow_dispatch' }}
         run: |
           echo "version=${{ github.sha }}" >> $GITHUB_ENV
       - name: Build V2bX
@@ -175,7 +175,7 @@ jobs:
             ./V2bX-${{ steps.get_filename.outputs.ASSET_NAME }}/*
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ./V2bX-${{ steps.get_filename.outputs.ASSET_NAME }}.zip*
