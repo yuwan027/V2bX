@@ -1,5 +1,7 @@
 package conf
 
+import "encoding/json"
+
 type XrayConfig struct {
 	LogConfig          *XrayLogConfig        `json:"Log"`
 	AssetPath          string                `json:"AssetPath"`
@@ -56,6 +58,7 @@ type XrayOptions struct {
 	DisableSniffing     bool                    `json:"DisableSniffing"`
 	EnableFallback      bool                    `json:"EnableFallback"`
 	FallBackConfigs     []FallBackConfigForXray `json:"FallBackConfigs"`
+	XHTTPSettings       json.RawMessage         `json:"XHTTPSettings"`
 }
 
 type FallBackConfigForXray struct {

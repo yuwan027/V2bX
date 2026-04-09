@@ -241,6 +241,12 @@ func buildV2ray(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCon
 		if err != nil {
 			return fmt.Errorf("unmarshal xhttp settings error: %s", err)
 		}
+		// 合并本地 XHTTP 覆盖（来自 config.json 的 XHTTPSettings 字段）
+		if len(config.XrayOptions.XHTTPSettings) > 0 {
+			if err := json.Unmarshal(config.XrayOptions.XHTTPSettings, inbound.StreamSetting.SplitHTTPSettings); err != nil {
+				return fmt.Errorf("unmarshal xhttp override error: %s", err)
+			}
+		}
 	default:
 		return errors.New("the network type is not vail")
 	}
