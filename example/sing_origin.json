@@ -1,0 +1,35 @@
+{
+    "log": {
+        "level": "info",
+        "timestamp": true
+    },
+    "dns": {
+        "servers": [
+            {
+                "tag": "google",
+                "type": "udp",
+                "server": "8.8.8.8"
+            }
+        ]
+    },
+    "inbounds": [],
+    "outbounds": [
+        {
+            "type": "direct",
+            "tag": "direct"
+        }
+    ],
+    "route": {
+        "rules": [
+            {
+                "action": "reject",
+                "ip_is_private": true
+            },
+            {
+                "action": "reject",
+                "protocol": "bittorrent"
+            }
+        ],
+        "final": "direct"
+    }
+}
