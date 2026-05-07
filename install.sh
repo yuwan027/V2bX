@@ -253,6 +253,13 @@ EOF
     if [[ ! -f /etc/V2bX/custom_inbound.json ]]; then
         cp custom_inbound.json /etc/V2bX/
     fi
+    if [[ ! -f /etc/V2bX/sing_origin.json ]]; then
+        cp sing_origin.json /etc/V2bX/
+    fi
+    # /etc/V2bX is the runtime config dir; drop the leftover templates from
+    # the unzip target so /usr/local/V2bX only carries the V2bX binary.
+    rm -f /usr/local/V2bX/{config,custom_inbound,custom_outbound,dns,route,sing_origin}.json
+    rm -f /usr/local/V2bX/{geoip,geosite}.dat
     curl -o /usr/bin/V2bX -Ls https://raw.githubusercontent.com/yuwan027/V2bX/dev_new/V2bX.sh
     chmod +x /usr/bin/V2bX
     if [ ! -L /usr/bin/v2bx ]; then
