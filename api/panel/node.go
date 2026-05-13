@@ -71,9 +71,32 @@ type VAllssNode struct {
 	EncryptionSettings  EncSettings     `json:"encryption_settings"`
 	ServerName          string          `json:"server_name"`
 
+	// Panel-delivered extras (vless + plain TLS).
+	ExtraCerts      []NodeCertContent    `json:"extra_certs"`
+	BuiltinFallback *BuiltinFallbackSpec `json:"builtin_fallback"`
+	ALPN            []string             `json:"alpn"`
+
 	// vless only
 	Flow          string        `json:"flow"`
 	RealityConfig RealityConfig `json:"-"`
+}
+
+// NodeCertContent carries a single PEM-formatted certificate pair delivered
+// by the panel via NodeInfo. Used to populate xray TLSSettings.Certs without
+// touching disk.
+type NodeCertContent struct {
+	Cert string `json:"cert"`
+	Key  string `json:"key"`
+}
+
+// BuiltinFallbackSpec mirrors conf.BuiltinFallbackSpec but is delivered by the
+// panel. When provided (and Enabled=true) it overrides the local config.
+type BuiltinFallbackSpec struct {
+	Enabled bool              `json:"enabled"`
+	Mode    string            `json:"mode"`
+	Status  int               `json:"status"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
 }
 
 type TlsSettings struct {

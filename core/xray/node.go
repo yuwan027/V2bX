@@ -22,6 +22,20 @@ func (c *Xray) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) e
 	if err != nil {
 		return fmt.Errorf("build dns error: %s", err)
 	}
+
+	// Start builtin fallback HTTP server if enabled — panel-delivered spec
+	// takes precedence over local XrayOptions.BuiltinFallback. Only meaningful
+	// when EnableFallback is also true (otherwise xray won't emit Fallbacks).
+	if spec := resolveBuiltinFallback(info, config); spec != nil && spec.Enabled && config.XrayOptions != nil && config.XrayOptions.EnableFallback {
+		fb := NewFallbackServer(tag, *spec)
+		sock, err := fb.Start()
+		if err != nil {
+			return fmt.Errorf("start builtin fallback: %s", err)
+		}
+		c.fallbackServers[tag] = fb
+		config.BuiltinFallbackSocket = sock
+	}
+
 	inboundConfig, err := buildInbound(config, info, tag)
 	if err != nil {
 		return fmt.Errorf("build inbound error: %s", err)
@@ -37,6 +51,25 @@ func (c *Xray) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) e
 	err = c.addOutbound(outBoundConfig)
 	if err != nil {
 		return fmt.Errorf("add outbound error: %s", err)
+	}
+	return nil
+}
+
+// resolveBuiltinFallback picks the panel spec if present, otherwise the local
+// one. Returns nil when neither side configured anything.
+func resolveBuiltinFallback(info *panel.NodeInfo, config *conf.Options) *conf.BuiltinFallbackSpec {
+	if info != nil && info.VAllss != nil && info.VAllss.BuiltinFallback != nil {
+		p := info.VAllss.BuiltinFallback
+		return &conf.BuiltinFallbackSpec{
+			Enabled: p.Enabled,
+			Mode:    p.Mode,
+			Status:  p.Status,
+			Headers: p.Headers,
+			Body:    p.Body,
+		}
+	}
+	if config != nil && config.XrayOptions != nil && config.XrayOptions.BuiltinFallback != nil {
+		return config.XrayOptions.BuiltinFallback
 	}
 	return nil
 }
@@ -79,6 +112,10 @@ func (c *Xray) DelNode(tag string) error {
 	err = c.removeOutbound(tag)
 	if err != nil {
 		return fmt.Errorf("remove out error: %s", err)
+	}
+	if fb, ok := c.fallbackServers[tag]; ok {
+		_ = fb.Stop()
+		delete(c.fallbackServers, tag)
 	}
 	return nil
 }

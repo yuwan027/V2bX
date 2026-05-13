@@ -36,13 +36,9 @@ func (c *Controller) renewCertTask() error {
 	return nil
 }
 
-// CalculateCertSHA256 reads cert PEM file and returns base64-encoded SHA256 hash of the full certificate
-func CalculateCertSHA256(certPath string) (string, error) {
-	certPEM, err := os.ReadFile(certPath)
-	if err != nil {
-		return "", fmt.Errorf("read cert file error: %w", err)
-	}
-	block, _ := pem.Decode(certPEM)
+// CertSHA256FromPEM returns base64-encoded SHA256 of the full certificate.
+func CertSHA256FromPEM(pemBytes []byte) (string, error) {
+	block, _ := pem.Decode(pemBytes)
 	if block == nil {
 		return "", fmt.Errorf("failed to decode PEM block")
 	}
@@ -50,13 +46,10 @@ func CalculateCertSHA256(certPath string) (string, error) {
 	return base64.StdEncoding.EncodeToString(hash[:]), nil
 }
 
-// CalculatePubkeySHA256 reads cert PEM file and returns base64-encoded SHA256 hash of the public key (SPKI)
-func CalculatePubkeySHA256(certPath string) (string, error) {
-	certPEM, err := os.ReadFile(certPath)
-	if err != nil {
-		return "", fmt.Errorf("read cert file error: %w", err)
-	}
-	block, _ := pem.Decode(certPEM)
+// PubkeySHA256FromPEM returns base64-encoded SHA256 of the cert's PKIX/SPKI
+// public key bytes.
+func PubkeySHA256FromPEM(pemBytes []byte) (string, error) {
+	block, _ := pem.Decode(pemBytes)
 	if block == nil {
 		return "", fmt.Errorf("failed to decode PEM block")
 	}
@@ -64,7 +57,6 @@ func CalculatePubkeySHA256(certPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("parse certificate error: %w", err)
 	}
-	// Marshal the public key to PKIX/SPKI format
 	pubkeyBytes, err := x509.MarshalPKIXPublicKey(cert.PublicKey)
 	if err != nil {
 		return "", fmt.Errorf("marshal public key error: %w", err)
@@ -73,21 +65,56 @@ func CalculatePubkeySHA256(certPath string) (string, error) {
 	return base64.StdEncoding.EncodeToString(hash[:]), nil
 }
 
+// CalculateCertSHA256 reads cert PEM file and returns base64-encoded SHA256 hash of the full certificate
+func CalculateCertSHA256(certPath string) (string, error) {
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return "", fmt.Errorf("read cert file error: %w", err)
+	}
+	return CertSHA256FromPEM(certPEM)
+}
+
+// CalculatePubkeySHA256 reads cert PEM file and returns base64-encoded SHA256 hash of the public key (SPKI)
+func CalculatePubkeySHA256(certPath string) (string, error) {
+	certPEM, err := os.ReadFile(certPath)
+	if err != nil {
+		return "", fmt.Errorf("read cert file error: %w", err)
+	}
+	return PubkeySHA256FromPEM(certPEM)
+}
+
 func (c *Controller) reportCertSHA256() error {
 	if c.CertConfig.CertMode == "none" || c.CertConfig.CertMode == "" {
 		return nil // No cert to report
 	}
-	if c.CertConfig.CertFile == "" {
+
+	var certHash, pubkeyHash string
+	var err error
+
+	if c.CertConfig.CertFile != "" {
+		certHash, err = CalculateCertSHA256(c.CertConfig.CertFile)
+		if err != nil {
+			return fmt.Errorf("calculate cert sha256 error: %w", err)
+		}
+		pubkeyHash, err = CalculatePubkeySHA256(c.CertConfig.CertFile)
+		if err != nil {
+			return fmt.Errorf("calculate pubkey sha256 error: %w", err)
+		}
+	} else if pem := primaryPanelCertPEM(c.info); pem != nil {
+		// Local primary cert absent — the panel-delivered first ExtraCert
+		// is being used as the primary, so report its hash instead.
+		certHash, err = CertSHA256FromPEM(pem)
+		if err != nil {
+			return fmt.Errorf("calculate panel cert sha256 error: %w", err)
+		}
+		pubkeyHash, err = PubkeySHA256FromPEM(pem)
+		if err != nil {
+			return fmt.Errorf("calculate panel pubkey sha256 error: %w", err)
+		}
+	} else {
 		return nil
 	}
-	certHash, err := CalculateCertSHA256(c.CertConfig.CertFile)
-	if err != nil {
-		return fmt.Errorf("calculate cert sha256 error: %w", err)
-	}
-	pubkeyHash, err := CalculatePubkeySHA256(c.CertConfig.CertFile)
-	if err != nil {
-		return fmt.Errorf("calculate pubkey sha256 error: %w", err)
-	}
+
 	report := &panel.CertReport{
 		NodeType:     c.apiClient.NodeType,
 		NodeID:       c.apiClient.NodeId,
@@ -102,16 +129,37 @@ func (c *Controller) reportCertSHA256() error {
 	return nil
 }
 
+// primaryPanelCertPEM returns the first non-empty panel-delivered certificate
+// as raw PEM bytes, or nil if the panel didn't deliver any.
+func primaryPanelCertPEM(info *panel.NodeInfo) []byte {
+	if info == nil || info.VAllss == nil {
+		return nil
+	}
+	for _, ec := range info.VAllss.ExtraCerts {
+		if ec.Cert != "" {
+			return []byte(ec.Cert)
+		}
+	}
+	return nil
+}
+
 func (c *Controller) requestCert() error {
+	panelHasCert := primaryPanelCertPEM(c.info) != nil
 	switch c.CertConfig.CertMode {
 	case "none", "":
 	case "file":
 		if c.CertConfig.CertFile == "" || c.CertConfig.KeyFile == "" {
-			return fmt.Errorf("cert file path or key file path not exist")
+			if panelHasCert {
+				return nil // panel-delivered cert will be used as primary
+			}
+			return fmt.Errorf("cert file path or key file path not exist, and panel did not deliver ExtraCerts")
 		}
 	case "dns", "http":
 		if c.CertConfig.CertFile == "" || c.CertConfig.KeyFile == "" {
-			return fmt.Errorf("cert file path or key file path not exist")
+			if panelHasCert {
+				return nil
+			}
+			return fmt.Errorf("cert file path or key file path not exist, and panel did not deliver ExtraCerts")
 		}
 		if file.IsExist(c.CertConfig.CertFile) && file.IsExist(c.CertConfig.KeyFile) {
 			return nil
@@ -126,7 +174,10 @@ func (c *Controller) requestCert() error {
 		}
 	case "self":
 		if c.CertConfig.CertFile == "" || c.CertConfig.KeyFile == "" {
-			return fmt.Errorf("cert file path or key file path not exist")
+			if panelHasCert {
+				return nil
+			}
+			return fmt.Errorf("cert file path or key file path not exist, and panel did not deliver ExtraCerts")
 		}
 		if file.IsExist(c.CertConfig.CertFile) && file.IsExist(c.CertConfig.KeyFile) {
 			return nil

@@ -72,6 +72,8 @@ func (c *Controller) Start() error {
 		return fmt.Errorf("update rule error: %s", err)
 	}
 	c.limiter = l
+	// Cache NodeInfo early so cert flow can see panel-delivered ExtraCerts.
+	c.info = node
 	if node.Security == panel.Tls {
 		err = c.requestCert()
 		if err != nil {
@@ -96,7 +98,6 @@ func (c *Controller) Start() error {
 		return fmt.Errorf("add users error: %s", err)
 	}
 	log.WithField("tag", c.tag).Infof("Added %d new users", added)
-	c.info = node
 	c.startTasks(node)
 	return nil
 }

@@ -58,6 +58,8 @@ type XrayOptions struct {
 	DisableSniffing     bool                    `json:"DisableSniffing"`
 	EnableFallback      bool                    `json:"EnableFallback"`
 	FallBackConfigs     []FallBackConfigForXray `json:"FallBackConfigs"`
+	BuiltinFallback     *BuiltinFallbackSpec    `json:"BuiltinFallback"`
+	ALPN                []string                `json:"ALPN"`
 	XHTTPSettings       json.RawMessage         `json:"XHTTPSettings"`
 }
 
@@ -67,6 +69,19 @@ type FallBackConfigForXray struct {
 	Path             string `json:"Path"`
 	Dest             string `json:"Dest"`
 	ProxyProtocolVer uint64 `json:"ProxyProtocolVer"`
+}
+
+// BuiltinFallbackSpec configures the V2bX-internal fallback HTTP server.
+// When Enabled and EnableFallback is on, V2bX starts a unix-socket http
+// server that returns a fixed response for any non-VLESS traffic that
+// xray-core routes via fallback. Useful for relay setups where running
+// nginx is undesirable.
+type BuiltinFallbackSpec struct {
+	Enabled bool              `json:"Enabled"`
+	Mode    string            `json:"Mode"`    // "empty200" (default) | "empty204" | "notfound" | "custom"
+	Status  int               `json:"Status"`  // used when Mode=="custom"
+	Headers map[string]string `json:"Headers"` // used when Mode=="custom"
+	Body    string            `json:"Body"`    // used when Mode=="custom"
 }
 
 func NewXrayOptions() *XrayOptions {

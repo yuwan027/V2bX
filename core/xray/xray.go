@@ -37,6 +37,7 @@ type Xray struct {
 	dispatcher                *dispatcher.DefaultDispatcher
 	users                     *UserMap
 	nodeReportMinTrafficBytes map[string]int64
+	fallbackServers           map[string]*FallbackServer
 }
 
 type UserMap struct {
@@ -51,6 +52,7 @@ func New(c *conf.CoreConfig) (vCore.Core, error) {
 			uidMap: make(map[string]int),
 		},
 		nodeReportMinTrafficBytes: make(map[string]int64),
+		fallbackServers:           make(map[string]*FallbackServer),
 	}, nil
 }
 

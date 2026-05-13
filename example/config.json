@@ -43,6 +43,34 @@
           "EnvName": "env1"
         }
       }
+    },
+    {
+      "Core": "xray",
+      "ApiHost": "http://127.0.0.1",
+      "ApiKey": "test",
+      "NodeID": 34,
+      "NodeType": "vless",
+      "Timeout": 30,
+      "ListenIP": "0.0.0.0",
+      "SendIP": "0.0.0.0",
+      "XrayOptions": {
+        "EnableFallback": true,
+        "FallBackConfigs": [],
+        "BuiltinFallback": {
+          "Enabled": true,
+          "Mode": "empty200"
+        },
+        "ALPN": ["h2", "http/1.1"]
+      },
+      "CertConfig": {
+        "CertMode": "file",
+        "RejectUnknownSni": false,
+        "CertFile": "/etc/V2bX/primary.cer",
+        "KeyFile": "/etc/V2bX/primary.key",
+        "ExtraCerts": [
+          { "CertFile": "/etc/V2bX/pinned-a.cer", "KeyFile": "/etc/V2bX/pinned-a.key" }
+        ]
+      }
     }
   ]
 }

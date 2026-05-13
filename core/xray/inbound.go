@@ -98,18 +98,19 @@ func buildInbound(option *conf.Options, nodeInfo *panel.NodeInfo, tag string) (*
 		}
 		switch option.CertConfig.CertMode {
 		case "none", "":
-			break // disable
+			// CertMode none: skip server TLS entirely. Panel-delivered certs
+			// are ignored too — operators wanting TLS must set a CertMode.
+			break
 		default:
+			certs, err := collectTLSCerts(option.CertConfig, nodeInfo)
+			if err != nil {
+				return nil, err
+			}
 			in.StreamSetting.Security = "tls"
 			in.StreamSetting.TLSSettings = &coreConf.TLSConfig{
-				Certs: []*coreConf.TLSCertConfig{
-					{
-						CertFile:     option.CertConfig.CertFile,
-						KeyFile:      option.CertConfig.KeyFile,
-						OcspStapling: 3600,
-					},
-				},
+				Certs:            certs,
 				RejectUnknownSNI: option.CertConfig.RejectUnknownSni,
+				ALPN:             resolveALPN(option, nodeInfo),
 			}
 		}
 	case panel.Reality:
@@ -156,49 +157,35 @@ func buildV2ray(config *conf.Options, nodeInfo *panel.NodeInfo, inbound *coreCon
 	if nodeInfo.Type == "vless" {
 		//Set vless
 		inbound.Protocol = "vless"
-		if config.XrayOptions.EnableFallback {
-			// Set fallback
-			fallbackConfigs, err := buildVlessFallbacks(config.XrayOptions.FallBackConfigs)
-			if err != nil {
-				return err
-			}
-			s, err := json.Marshal(&coreConf.VLessInboundConfig{
-				Decryption: "none",
-				Fallbacks:  fallbackConfigs,
-			})
-			if err != nil {
-				return fmt.Errorf("marshal vless fallback config error: %s", err)
-			}
-			inbound.Settings = (*json.RawMessage)(&s)
-		} else {
-			var err error
-			decryption := "none"
-			if nodeInfo.VAllss.Encryption != "" {
-				switch nodeInfo.VAllss.Encryption {
-				case "mlkem768x25519plus":
-					encSettings := nodeInfo.VAllss.EncryptionSettings
-					parts := []string{
-						"mlkem768x25519plus",
-						encSettings.Mode,
-						encSettings.Ticket,
-					}
-					if encSettings.ServerPadding != "" {
-						parts = append(parts, encSettings.ServerPadding)
-					}
-					parts = append(parts, encSettings.PrivateKey)
-					decryption = strings.Join(parts, ".")
-				default:
-					return fmt.Errorf("vless decryption method %s is not support", nodeInfo.VAllss.Encryption)
-				}
-			}
-			s, err := json.Marshal(&coreConf.VLessInboundConfig{
-				Decryption: decryption,
-			})
-			if err != nil {
-				return fmt.Errorf("marshal vless config error: %s", err)
-			}
-			inbound.Settings = (*json.RawMessage)(&s)
+		decryption, err := vlessDecryption(nodeInfo)
+		if err != nil {
+			return err
 		}
+		vcfg := &coreConf.VLessInboundConfig{Decryption: decryption}
+		if config.XrayOptions.EnableFallback {
+			if len(config.XrayOptions.FallBackConfigs) > 0 {
+				fallbackConfigs, err := buildVlessFallbacks(config.XrayOptions.FallBackConfigs)
+				if err != nil {
+					return err
+				}
+				vcfg.Fallbacks = fallbackConfigs
+			}
+			// Append builtin fallback as last-resort default ("" name/alpn/path).
+			if sock := config.BuiltinFallbackSocket; sock != "" {
+				destRaw, _ := json.Marshal("unix:" + sock)
+				vcfg.Fallbacks = append(vcfg.Fallbacks, &coreConf.VLessInboundFallback{
+					Dest: destRaw,
+				})
+			}
+			if len(vcfg.Fallbacks) == 0 {
+				return fmt.Errorf("EnableFallback is true but neither FallBackConfigs nor BuiltinFallback is configured")
+			}
+		}
+		s, err := json.Marshal(vcfg)
+		if err != nil {
+			return fmt.Errorf("marshal vless config error: %s", err)
+		}
+		inbound.Settings = (*json.RawMessage)(&s)
 	} else {
 		// Set vmess
 		inbound.Protocol = "vmess"
@@ -362,6 +349,94 @@ func buildVlessFallbacks(fallbackConfigs []conf.FallBackConfigForXray) ([]*coreC
 		}
 	}
 	return vlessFallBacks, nil
+}
+
+// collectTLSCerts merges certificate sources for the TLS inbound: local
+// primary, local ExtraCerts (file mode), and panel-delivered ExtraCerts
+// (in-memory PEM). Order matters — xray-core falls back to Certs[0] when no
+// SNI matches, so the primary must always be first.
+func collectTLSCerts(cert *conf.CertConfig, nodeInfo *panel.NodeInfo) ([]*coreConf.TLSCertConfig, error) {
+	var certs []*coreConf.TLSCertConfig
+	primaryFromLocal := cert.CertFile != "" && cert.KeyFile != ""
+	if primaryFromLocal {
+		certs = append(certs, &coreConf.TLSCertConfig{
+			CertFile:     cert.CertFile,
+			KeyFile:      cert.KeyFile,
+			OcspStapling: 3600,
+		})
+	}
+	for _, e := range cert.ExtraCerts {
+		if e.CertFile == "" || e.KeyFile == "" {
+			continue
+		}
+		certs = append(certs, &coreConf.TLSCertConfig{
+			CertFile:     e.CertFile,
+			KeyFile:      e.KeyFile,
+			OcspStapling: 3600,
+		})
+	}
+	if nodeInfo != nil && nodeInfo.VAllss != nil {
+		for i, ec := range nodeInfo.VAllss.ExtraCerts {
+			if ec.Cert == "" || ec.Key == "" {
+				continue
+			}
+			cfg := &coreConf.TLSCertConfig{
+				CertStr:      []string{ec.Cert},
+				KeyStr:       []string{ec.Key},
+				OcspStapling: 3600,
+			}
+			if !primaryFromLocal && i == 0 {
+				certs = append([]*coreConf.TLSCertConfig{cfg}, certs...)
+			} else {
+				certs = append(certs, cfg)
+			}
+		}
+	}
+	if len(certs) == 0 {
+		return nil, errors.New("no TLS certificate available: neither local CertFile nor panel-delivered ExtraCerts provided")
+	}
+	return certs, nil
+}
+
+// resolveALPN picks the panel-delivered ALPN list when present, then local
+// XrayOptions.ALPN, then defaults to h2 + http/1.1. Returns nil to leave the
+// list unset on xray-core's TLSConfig (panel may force this by sending []).
+func resolveALPN(option *conf.Options, nodeInfo *panel.NodeInfo) *coreConf.StringList {
+	var alpn []string
+	switch {
+	case nodeInfo != nil && nodeInfo.VAllss != nil && nodeInfo.VAllss.ALPN != nil:
+		alpn = nodeInfo.VAllss.ALPN
+	case option.XrayOptions != nil && option.XrayOptions.ALPN != nil:
+		alpn = option.XrayOptions.ALPN
+	default:
+		alpn = []string{"h2", "http/1.1"}
+	}
+	if len(alpn) == 0 {
+		return nil
+	}
+	l := coreConf.StringList(alpn)
+	return &l
+}
+
+// vlessDecryption derives the xray "decryption" string from panel-delivered
+// encryption settings. Shared by fallback / non-fallback branches so the
+// mlkem768x25519plus configuration isn't lost when EnableFallback is on.
+func vlessDecryption(nodeInfo *panel.NodeInfo) (string, error) {
+	if nodeInfo.VAllss == nil || nodeInfo.VAllss.Encryption == "" {
+		return "none", nil
+	}
+	switch nodeInfo.VAllss.Encryption {
+	case "mlkem768x25519plus":
+		es := nodeInfo.VAllss.EncryptionSettings
+		parts := []string{"mlkem768x25519plus", es.Mode, es.Ticket}
+		if es.ServerPadding != "" {
+			parts = append(parts, es.ServerPadding)
+		}
+		parts = append(parts, es.PrivateKey)
+		return strings.Join(parts, "."), nil
+	default:
+		return "", fmt.Errorf("vless decryption method %s is not support", nodeInfo.VAllss.Encryption)
+	}
 }
 
 func buildTrojanFallbacks(fallbackConfigs []conf.FallBackConfigForXray) ([]*coreConf.TrojanInboundFallback, error) {

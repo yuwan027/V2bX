@@ -118,6 +118,9 @@ type Options struct {
 	SingOptions            *SingOptions    `json:"SingOptions"`
 	Hysteria2ConfigPath    string          `json:"Hysteria2ConfigPath"`
 	CertConfig             *CertConfig     `json:"CertConfig"`
+
+	// Runtime-only fields populated by the core layer; not serialised.
+	BuiltinFallbackSocket string `json:"-"`
 }
 
 func (o *Options) UnmarshalJSON(data []byte) error {
